@@ -1,4 +1,5 @@
 .DS_Store
+v2ex.datastore
 *.swp
 *.pyc
 *.log
