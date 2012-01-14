@@ -1,8 +1,8 @@
 title: 'V2EX'
-logo: 4max.vx
+logo: '4max.vx'
 padding-left: 1
-api_url: 'http://localhost:10000/'
-#api_url: 'http://www.v2ex.com/'
+#api_url: 'http://localhost:10000/'
+api_url: 'http://www.v2ex.com/'
 
 colors:
   title: 'blue,black'

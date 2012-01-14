@@ -11,17 +11,45 @@ import re
 import traceback
 import yaml
 import socket
+from datetime import datetime
 from urllib import urlopen, urlencode
 from BeautifulSoup import BeautifulSoup
 
+socket.setdefaulttimeout(30)
 locale.setlocale(locale.LC_ALL, 'zh_CN.UTF-8')
 runtime_dir = os.path.realpath(os.path.dirname(__file__))
 settings = yaml.load(file(os.path.join(runtime_dir + '/settings.vx'), 'r'))
 fmt = '%(asctime)s [%(levelname)s,%(lineno)s] %(message)s'
-filename = os.path.join(runtime_dir, 'v2ex.log')
+filename = os.path.join(runtime_dir, 'v2ex-%s.log' % socket.gethostname())
 logging.basicConfig(level=logging.DEBUG, filename=filename, format=fmt)
 logger = logging.getLogger(__name__)
 last = 0
+
+def humanize_timesince(start_time):
+    delta = datetime.now() - start_time
+
+    plural = lambda x: 's' if x != 1 else ''
+
+    num_years = delta.days / 365
+    if (num_years > 0):
+        return "%d year%s ago" % (num_years, plural(num_years))
+
+    num_weeks = delta.days / 7
+    if (num_weeks > 0):
+        return "%d week%s ago" % (num_weeks, plural(num_weeks))
+
+    if (delta.days > 0):
+        return "%d day%s ago" % (delta.days, plural(delta.days))
+
+    num_hours = delta.seconds / 3600
+    if (num_hours > 0):
+        return "%d hour%s ago" % (num_hours, plural(num_hours))
+
+    num_minutes = delta.seconds / 60
+    if (num_minutes > 0):
+        return "%d minute%s ago" % (num_minutes, plural(num_minutes))
+
+    return "a few seconds ago"
 
 # 很黄很暴力
 class API(object):
@@ -63,6 +91,8 @@ class V2EX(object):
             logger.debug('remove line: %d of %d' % (linenum, self.rows))
             logger.debug('%d' % len(' ' * (self.cols - 1)))
             self.sc.addstr(linenum, 0, ' ' * (self.cols - 1), curses.color_pair(7))
+            # must refresh on linux
+            self.sc.refresh()
 
     # get data from internet
     def get_data(self, url, params=None):
@@ -184,20 +214,23 @@ class V2EX(object):
     # default status line
     def status(self):
         x = self.rows - 1
+        self.rmline(x)
         self.sc.addstr(x, self.padding_left, "`*'", curses.color_pair(2))
         self.sc.addstr(x, 5, "- shortcut", curses.color_pair(7))
 
         self.sc.addstr(x, 17, "`h'", curses.color_pair(2))
         self.sc.addstr(x, 21, "- home", curses.color_pair(7))
 
-        self.sc.addstr(x, 29, "`q'", curses.color_pair(2))
-        self.sc.addstr(x, 33, "- quit", curses.color_pair(7))
+        self.sc.addstr(x, 29, "`r'", curses.color_pair(2))
+        self.sc.addstr(x, 33, "- reload", curses.color_pair(7))
+
+        self.sc.addstr(x, 43, "`q'", curses.color_pair(2))
+        self.sc.addstr(x, 47, "- quit", curses.color_pair(7))
 
     # display error message
     def error(self, message):
+        self.rmline(self.rows - 1)
         msg = message
-        if len(message) < self.cols:
-            message += ' ' * (self.cols - len(message) - 13)
         logger.debug("message[%d]: `%s'" % (len(message), msg))
         self.sc.addstr(self.rows - 1, self.padding_left, 'Oh, shit: ', curses.color_pair(1) | curses.A_BOLD)
         self.sc.addstr(self.rows - 1, self.padding_left + 10, message, curses.color_pair(7) | curses.A_BOLD)
@@ -205,9 +238,8 @@ class V2EX(object):
 
     # display loading message
     def loading(self, message):
+        self.rmline(self.rows - 1)
         msg = message
-        if len(message) < self.cols:
-            message += ' ' * (self.cols - len(message) - 14)
         logger.debug("message[%d]: `%s'" % (len(message), msg))
         self.sc.addstr(self.rows - 1, self.padding_left, 'Loading ... ', curses.color_pair(3) | curses.A_BOLD)
         self.sc.addstr(self.rows - 1, self.padding_left + 12, message, curses.color_pair(7) | curses.A_BOLD)
@@ -292,10 +324,7 @@ class V2EX(object):
             logger.info(url)
             api = API()
             replies = api.replies(self.get_data(url))
-            url = '%sapi/replies/show.json?topic_id=%s' % (self.settings['api_url'], t['id'])
-            #replies = self.get_json(url)
-            #logger.info(self.get_json(url))
-            logger.info(replies)
+            #logger.info(replies)
             for reply in replies:
                 meta = re.search(r'^(#\d+)', reply['reply_meta'])
                 meta = meta.group(0)
@@ -309,6 +338,24 @@ class V2EX(object):
                 for line in reply['content']:
                     self.w(self.padding_left, line.encode('utf8'), curses.color_pair(7))
                 self.n()
+
+            """url = '%sapi/replies/show.json?topic_id=%s' % (self.settings['api_url'], t['id'])
+            replies = self.get_json(url)
+            i = 1
+            for reply in replies:
+                logger.info(reply['created'])
+                t = datetime.strptime(reply['created'], '%Y-%m-%d %H:%M:%S.%f')
+                timesince = humanize_timesince(t)
+                self.w(self.padding_left, '#%d' % i, curses.color_pair(4), False)
+                self.w(self.padding_left + len(str(i)) + 2, timesince, curses.color_pair(7), False)
+                offset = self.padding_left + len(str(i)) + 3 + len(timesince)
+                self.w(offset, 'by', curses.color_pair(7), False)
+                self.w(offset + 3, reply['member']['username'], curses.color_pair(5))
+                content = reply['content'].replace('\r', '\n').replace('\n\n', '\n').split('\n')
+                for line in content:
+                    self.w(self.padding_left, line.encode('utf8'), curses.color_pair(7))
+                i += 1
+                self.n()"""
 
         self.render()
 
@@ -333,14 +380,19 @@ if __name__ == '__main__':
         #sc.scrollok(True)
         
         # init colors
+        if 'xterm-256color' in curses.termname():
+            black = 16
+            logger.debug('xterm-256color background.')
+        else:
+            black = curses.COLOR_BLACK
         curses.start_color()
-        curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-        curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_BLACK)
-        curses.init_pair(5, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-        curses.init_pair(6, curses.COLOR_CYAN, curses.COLOR_BLACK)
-        curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
+        curses.init_pair(1, curses.COLOR_RED, black)
+        curses.init_pair(2, curses.COLOR_GREEN, black)
+        curses.init_pair(3, curses.COLOR_YELLOW, black)
+        curses.init_pair(4, curses.COLOR_BLUE, black)
+        curses.init_pair(5, curses.COLOR_MAGENTA, black)
+        curses.init_pair(6, curses.COLOR_CYAN, black)
+        curses.init_pair(7, curses.COLOR_WHITE, black)
 
         # set background
         sc.bkgdset(curses.color_pair(7))
@@ -386,7 +438,6 @@ if __name__ == '__main__':
                     logger.info('page down.')
                     v2ex.render()
             elif key == 'q':
-                #sc.addstr(v2ex.rows - 1, v2ex.padding_left, ' ' * (v2ex.rows - 2), curses.color_pair(7) | curses.A_BOLD)
                 v2ex.rmline(v2ex.rows - 1)
                 sc.addstr(v2ex.rows - 1, v2ex.padding_left, 'Do you want to exit? (y/n)', curses.color_pair(3) | curses.A_BOLD)
                 sc.refresh()
@@ -396,7 +447,6 @@ if __name__ == '__main__':
                     break
                 else:
                     v2ex.rmline(v2ex.rows - 1)
-                    #sc.addstr(v2ex.rows - 1, v2ex.padding_left, ' ' * (v2ex.rows - 2), curses.color_pair(7) | curses.A_BOLD)
                     v2ex.status()
                     sc.refresh()
             else:
