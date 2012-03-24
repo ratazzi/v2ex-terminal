@@ -339,24 +339,6 @@ class V2EX(object):
                     self.w(self.padding_left, line.encode('utf8'), curses.color_pair(7))
                 self.n()
 
-            """url = '%sapi/replies/show.json?topic_id=%s' % (self.settings['api_url'], t['id'])
-            replies = self.get_json(url)
-            i = 1
-            for reply in replies:
-                logger.info(reply['created'])
-                t = datetime.strptime(reply['created'], '%Y-%m-%d %H:%M:%S.%f')
-                timesince = humanize_timesince(t)
-                self.w(self.padding_left, '#%d' % i, curses.color_pair(4), False)
-                self.w(self.padding_left + len(str(i)) + 2, timesince, curses.color_pair(7), False)
-                offset = self.padding_left + len(str(i)) + 3 + len(timesince)
-                self.w(offset, 'by', curses.color_pair(7), False)
-                self.w(offset + 3, reply['member']['username'], curses.color_pair(5))
-                content = reply['content'].replace('\r', '\n').replace('\n\n', '\n').split('\n')
-                for line in content:
-                    self.w(self.padding_left, line.encode('utf8'), curses.color_pair(7))
-                i += 1
-                self.n()"""
-
         self.render()
 
 if __name__ == '__main__':
