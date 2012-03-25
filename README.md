@@ -15,6 +15,7 @@
   * `h' Home
   * `r' Reload
   * `q' Quit
+
 ## Report Bugs
 你可以在 [Github Issues](https://github.com/ratazzi/v2ex-terminal/issues) 报告 bug，最好附上程序日志的 [Pastebin][pastebin] 或者 [notepad.cc][notepadcc] 等的链接。
  
