@@ -13,7 +13,6 @@ import yaml
 import socket
 from datetime import datetime
 from urllib import urlopen, urlencode
-from BeautifulSoup import BeautifulSoup
 
 socket.setdefaulttimeout(30)
 locale.setlocale(locale.LC_ALL, 'zh_CN.UTF-8')
@@ -51,23 +50,6 @@ def humanize_timesince(start_time):
 
     return "a few seconds ago"
 
-# 很黄很暴力
-class API(object):
-    def __init__(self):
-        pass
-
-    def replies(self, topic_html):
-        doc = BeautifulSoup(''.join(topic_html.replace('\r', '')))
-        r = doc.findAll(id='replies')[0]
-        items = []
-        for reply in r.findAll('div', recursive=0):
-            item = {}
-            item['by'] = reply.find(attrs={'class':'dark'}).string
-            item['content'] = reply.find(attrs={'class':'sep5'}).nextSibling.nextSibling.findAll(text=True)
-            item['reply_meta'] = reply.find('small').contents[0].replace('&nbsp;', '').strip()
-            items.append(item)
-        return items
-
 class V2EX(object):
     def __init__(self, sc, settings):
         self.sc = sc
@@ -90,7 +72,8 @@ class V2EX(object):
         if linenum < self.rows:
             logger.debug('remove line: %d of %d' % (linenum, self.rows))
             logger.debug('%d' % len(' ' * (self.cols - 1)))
-            self.sc.addstr(linenum, 0, ' ' * (self.cols - 1), curses.color_pair(7))
+            self.sc.addstr(linenum, 0, ' ' * (self.cols - 1), \
+                    curses.color_pair(7))
             # must refresh on linux
             self.sc.refresh()
 
@@ -162,11 +145,17 @@ class V2EX(object):
             if self.p != 1:
                 logger.debug("`%s'" % buf[0][1])
             if len(self.buf) > 1:
-                self.sc.addstr(self.rows - 2, self.padding_left, '(', curses.color_pair(4))
-                self.sc.addstr(self.rows - 2, self.padding_left + 1, '%d' % self.p, curses.color_pair(3))
-                self.sc.addstr(self.rows - 2, self.padding_left + len(str(self.p)) + 1, ' of ', curses.color_pair(7))
-                self.sc.addstr(self.rows - 2, self.padding_left + len(str(self.p)) + 5, '%d' % len(self.buf), curses.color_pair(3))
-                self.sc.addstr(self.rows - 2, self.padding_left + len(str(self.p)) + 6, ')', curses.color_pair(4))
+                self.sc.addstr(self.rows - 2, self.padding_left, \
+                        '(', curses.color_pair(4))
+                self.sc.addstr(self.rows - 2, self.padding_left + 1, \
+                        '%d' % self.p, curses.color_pair(3))
+                self.sc.addstr(self.rows - 2, self.padding_left + \
+                        len(str(self.p)) + 1, ' of ', curses.color_pair(7))
+                self.sc.addstr(self.rows - 2, self.padding_left + \
+                        len(str(self.p)) + 5, '%d' % len(self.buf), \
+                        curses.color_pair(3))
+                self.sc.addstr(self.rows - 2, self.padding_left + \
+                        len(str(self.p)) + 6, ')', curses.color_pair(4))
         else:
             buf = self.buf
 
@@ -199,7 +188,8 @@ class V2EX(object):
         self.last = 0
         self.sc.erase()
         for line in self.logo:
-            self.sc.addstr(self.last, self.padding_left, line, curses.color_pair(4) | curses.A_BOLD)
+            self.sc.addstr(self.last, self.padding_left, line, \
+                    curses.color_pair(4) | curses.A_BOLD)
             self.last += 1
         self.last += 1
         for (padding, text, attr, newline, x) in self.nav:
@@ -232,8 +222,10 @@ class V2EX(object):
         self.rmline(self.rows - 1)
         msg = message
         logger.debug("message[%d]: `%s'" % (len(message), msg))
-        self.sc.addstr(self.rows - 1, self.padding_left, 'Oh, shit: ', curses.color_pair(1) | curses.A_BOLD)
-        self.sc.addstr(self.rows - 1, self.padding_left + 10, message, curses.color_pair(7) | curses.A_BOLD)
+        self.sc.addstr(self.rows - 1, self.padding_left, 'Oh, shit: ', \
+                curses.color_pair(1) | curses.A_BOLD)
+        self.sc.addstr(self.rows - 1, self.padding_left + 10, message, \
+                curses.color_pair(7) | curses.A_BOLD)
         self.sc.refresh()
 
     # display loading message
@@ -241,15 +233,18 @@ class V2EX(object):
         self.rmline(self.rows - 1)
         msg = message
         logger.debug("message[%d]: `%s'" % (len(message), msg))
-        self.sc.addstr(self.rows - 1, self.padding_left, 'Loading ... ', curses.color_pair(3) | curses.A_BOLD)
-        self.sc.addstr(self.rows - 1, self.padding_left + 12, message, curses.color_pair(7) | curses.A_BOLD)
+        self.sc.addstr(self.rows - 1, self.padding_left, 'Loading ... ', \
+                curses.color_pair(3) | curses.A_BOLD)
+        self.sc.addstr(self.rows - 1, self.padding_left + 12, message, \
+                curses.color_pair(7) | curses.A_BOLD)
         self.sc.refresh()
 
     def home(self):
         self.loading('latest topics.')
         self.buf = []
         self.nav = []
-        self.nav.append((self.padding_left, '最新主题', curses.color_pair(1), True, None))
+        self.nav.append((self.padding_left, '最新主题', \
+                curses.color_pair(1), True, None))
         self.nav.append((self.padding_left, '', curses.color_pair(7), True, None))
 
         def topic(author, node, reply, title, l=None, i=None):
@@ -260,7 +255,8 @@ class V2EX(object):
             self.w(offset, 'in', curses.color_pair(7), False)
             offset = offset + 3
             self.w(offset, node.encode('utf8'), curses.color_pair(3), False)
-            self.w(offset + len(node.encode('gbk')) + 1, '收到 %s 回复' % reply, curses.color_pair(7))
+            self.w(offset + len(node.encode('gbk')) + 1, \
+                    '收到 %s 回复' % reply, curses.color_pair(7))
             self.w(6, title.encode('utf8'), curses.color_pair(4) | curses.A_BOLD)
             self.n()
 
@@ -277,7 +273,8 @@ class V2EX(object):
             #logger.info(t['title'])
             key = '%x' % index
             shortcuts[key] = t['id']
-            topic(t['member']['username'], t['node']['title'], t['replies'], t['title'], None, index)
+            topic(t['member']['username'], t['node']['title'], \
+                    t['replies'], t['title'], None, index)
             index = index + 1
 
         self.render()
@@ -299,44 +296,58 @@ class V2EX(object):
         logger.info('content: %s' % t['content'])
         logger.info('replies: %s' % t['replies'])
 
-        nav = '%s › %s' % (self.settings['title'], t['node']['name'].encode('utf8'))
-        self.nav.append((self.padding_left, nav, curses.color_pair(1) | curses.A_BOLD, True, None))
+        nav = '%s › %s' % (self.settings['title'], \
+                t['node']['name'].encode('utf8'))
+        self.nav.append((self.padding_left, nav, \
+                curses.color_pair(1) | curses.A_BOLD, True, None))
         self.nav.append((self.padding_left, '', curses.color_pair(7), True, None))
 
-        self.nav.append((self.padding_left, t['title'].encode('utf8'), curses.color_pair(1) | curses.A_BOLD, True, None))
-        self.nav.append((self.padding_left, 'By', curses.color_pair(7), False, None))
-        self.nav.append((self.padding_left + 3, t['member']['username'], curses.color_pair(5), True, None))
+        self.nav.append((self.padding_left, t['title'].encode('utf8'), \
+            curses.color_pair(1) | curses.A_BOLD, True, None))
+        self.nav.append((self.padding_left, 'By', curses.color_pair(7), \
+                False, None))
+        self.nav.append((self.padding_left + 3, t['member']['username'], \
+                curses.color_pair(5), True, None))
         self.nav.append((self.padding_left, '', curses.color_pair(7), True, None))
 
         lines = []
-        content = t['content'].replace('\r', '\n').replace('\n\n', '\n').split('\n')
+        content = t['content'].replace('\r', '\n').\
+                replace('\n\n', '\n').split('\n')
         for line in content:
             self.w(self.padding_left, line.encode('utf-8'), curses.color_pair(7))
 
         self.n()
         self.w(self.padding_left, '共收到', curses.color_pair(3), False)
-        self.w(self.padding_left + 7, '%s' % t['replies'], curses.color_pair(2), False)
-        self.w(self.padding_left + 8 + len(str(t['replies'])), '条回复', curses.color_pair(3))
+        self.w(self.padding_left + 7, '%s' % t['replies'], \
+                curses.color_pair(2), False)
+        self.w(self.padding_left + 8 + len(str(t['replies'])), \
+                '条回复', curses.color_pair(3))
         self.n()
 
         if int(t['replies']) > 0:
-            url = '%st/%s' % (self.settings['api_url'], str(id))
-            logger.info(url)
-            api = API()
-            replies = api.replies(self.get_data(url))
-            #logger.info(replies)
+            url = '%sapi/replies/show.json?topic_id=%s' % \
+                    (self.settings['api_url'], t['id'])
+            replies = self.get_json(url)
+            #logger.info(self.get_json(url))
+            logger.debug(replies)
+            i = 1
             for reply in replies:
-                meta = re.search(r'^(#\d+)', reply['reply_meta'])
-                meta = meta.group(0)
-                reply['reply_meta'] = reply['reply_meta'].replace(meta, '')
-                logger.info('meta: %s [%s]' % (meta, type(meta)))
-                meta = meta.encode('utf-8')
-                self.w(self.padding_left, meta, curses.color_pair(4), False)
-                self.w(self.padding_left + len(meta), reply['reply_meta'], curses.color_pair(7), False)
-                self.w(self.padding_left + len(meta + reply['reply_meta']) + 1, reply['by'], curses.color_pair(5))
-
-                for line in reply['content']:
-                    self.w(self.padding_left, line.encode('utf8'), curses.color_pair(7))
+                logger.info(reply['created'])
+                t = datetime.strptime(reply['created'], '%Y-%m-%d %H:%M:%S.%f')
+                timesince = humanize_timesince(t)
+                self.w(self.padding_left, '#%d' % i, curses.color_pair(4), False)
+                self.w(self.padding_left + len(str(i)) + 2, timesince, \
+                        curses.color_pair(7), False)
+                offset = self.padding_left + len(str(i)) + 3 + len(timesince)
+                self.w(offset, 'by', curses.color_pair(7), False)
+                self.w(offset + 3, reply['member']['username'], \
+                        curses.color_pair(5))
+                content = reply['content'].replace('\r', '\n').\
+                        replace('\n\n', '\n').split('\n')
+                for line in content:
+                    self.w(self.padding_left, line.encode('utf8'), \
+                            curses.color_pair(7))
+                i += 1
                 self.n()
 
         self.render()
@@ -349,17 +360,10 @@ if __name__ == '__main__':
     logger.debug(settings)
     try:
         sc = curses.initscr()
-        """if curses.has_colors():
-            sys.stderr.write('your terminal is not support colors.')
-            sys.stderr.flush()
-            raise Exception"""
         curses.noecho()
         curses.cbreak()
         sc.keypad(1)
-        #sc.idlok(1)
         logger.info("terminal: `%s'", curses.termname())
-        # sc.border(0)
-        #sc.scrollok(True)
         
         # init colors
         if 'xterm-256color' in curses.termname():
@@ -421,7 +425,9 @@ if __name__ == '__main__':
                     v2ex.render()
             elif key == 'q':
                 v2ex.rmline(v2ex.rows - 1)
-                sc.addstr(v2ex.rows - 1, v2ex.padding_left, 'Do you want to exit? (y/n)', curses.color_pair(3) | curses.A_BOLD)
+                sc.addstr(v2ex.rows - 1, v2ex.padding_left, \
+                        'Do you want to exit? (y/n)',\
+                        curses.color_pair(3) | curses.A_BOLD)
                 sc.refresh()
                 ch = sc.getch()
                 if ch < 256 and chr(ch).lower() == 'y':
