@@ -286,9 +286,9 @@ class V2EX(object):
         self.p = 1
         self.loading('topic %s' % str(id))
         url = '%sapi/topics/show.json?id=%s' % (self.settings['api_url'], str(id))
-        t = self.get_json(url)
+        t = self.get_json(url)[0]
 
-        #logger.info(t)
+        # logger.info(t)
         logger.info('title: %s' % t['title'])
         logger.info('node: %s' % t['node']['name'])
         #logger.info('node: %s' % t['node']['title'])
@@ -333,7 +333,7 @@ class V2EX(object):
             i = 1
             for reply in replies:
                 logger.info(reply['created'])
-                t = datetime.strptime(reply['created'], '%Y-%m-%d %H:%M:%S.%f')
+                t = datetime.fromtimestamp(reply['created'])
                 timesince = humanize_timesince(t)
                 self.w(self.padding_left, '#%d' % i, curses.color_pair(4), False)
                 self.w(self.padding_left + len(str(i)) + 2, timesince, \
@@ -364,7 +364,7 @@ if __name__ == '__main__':
         curses.cbreak()
         sc.keypad(1)
         logger.info("terminal: `%s'", curses.termname())
-        
+
         # init colors
         if 'xterm-256color' in curses.termname():
             black = 16
@@ -443,8 +443,7 @@ if __name__ == '__main__':
                 logger.debug("Enter: `%s'" % curses.keyname(key))
 
     except Exception, e:
-        logger.critical(e)
-        logger.critical(traceback.print_exc())
+        logger.exception(e)
     finally:
         curses.nocbreak()
         curses.echo()
